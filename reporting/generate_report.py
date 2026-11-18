@@ -1,3 +1,4 @@
+import time
 import os
 import json
 from pathlib import Path
@@ -6,11 +7,17 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+STATUS_LABELS = {
+    "PASS": "양호",
+    "FAIL": "취약",
+    "INFO": "점검 대상 없음",
+    "ERROR": "점검 오류"
+}
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 
 INPUT_ENRICHED = "outputs/enriched_findings.json"
 INPUT_SCAN_RESULT = "outputs/scan_result.json"
@@ -25,15 +32,33 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def call_gemini(prompt):
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.1,
-            top_p=0.8
-        )
-    )
-    return response.text
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt
+            )
+
+            return response.text
+
+        except Exception as e:
+            error_message = str(e)
+
+            print(f"Gemini 요청 실패 ({attempt + 1}/3): {error_message}")
+
+            # 모델을 찾을 수 없는 경우 재시도하지 않음
+            if "404" in error_message:
+                raise
+
+            # 서버 과부하인 경우 재시도
+            if "503" in error_message:
+                if attempt < 2:
+                    time.sleep(5 * (attempt + 1))
+                    continue
+
+            raise
+
+    raise Exception("Gemini 보고서 생성 실패")
 
 
 def build_full_report_prompt(scan_result, enriched_findings):
@@ -49,7 +74,14 @@ def build_full_report_prompt(scan_result, enriched_findings):
 6. 보안 비전문가도 이해할 수 있도록 쉬운 한국어로 작성한다.
 7. 출력은 Markdown 형식으로만 작성한다.
 8. 코드블록은 사용하지 않는다.
-
+9. PASS 항목은 취약점으로 설명하지 않는다.
+10. INFO 항목은 '대상 없음'으로 표시한다.
+11. ERROR 항목은 '점검 오류'로 표시한다.
+12. INFO와 ERROR를 취약점 개수에 포함하지 않는다.
+13. 진단 결과의 개수와 보안 점수를 임의로 변경하지 않는다.
+14. 입력 데이터에 없는 보안 위험을 추측하지 않는다.
+15. 취약점이 발견되지 않은 경우 취약점 분석 내용을 임의로 생성하지 않는다.
+16. 조치 방법은 YAML 지식베이스의 remediation_steps를 우선 사용한다.
 
 [스캔 결과 요약]
 {json.dumps(scan_result.get("summary", {}), ensure_ascii=False, indent=2)}
@@ -59,12 +91,14 @@ def build_full_report_prompt(scan_result, enriched_findings):
 
 [리포트 출력 형식]
 
-# 클라우드 보안 진단 리포트
+# 보안 진단 리포트
 
 ## 1. 진단 요약
 - 전체 점검 수:
 - 양호 항목 수:
 - 취약 항목 수:
+- 대상 없음:
+- 점검 오류:
 - 보안 점수:
 - 종합 의견:
 
@@ -125,6 +159,6 @@ def main():
 
     print(f"Gemini 리포트 생성 완료: {OUTPUT_MD}")
 
-
+    
 if __name__ == "__main__":
     main()

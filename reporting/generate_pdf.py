@@ -1,7 +1,13 @@
 import markdown
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-
+# 진단 상태 한국어 변환
+STATUS_LABELS = {
+    "PASS": "양호",
+    "FAIL": "취약",
+    "INFO": "대상 없음",
+    "ERROR": "점검 오류"
+}
 
 INPUT_MD = "outputs/security_report.md"
 OUTPUT_HTML = "outputs/security_report.html"
@@ -110,6 +116,12 @@ def markdown_to_html():
         raise FileNotFoundError(f"Markdown 파일이 없습니다: {INPUT_MD}")
 
     md_text = md_path.read_text(encoding="utf-8")
+
+    # Markdown 보고서의 상태값을 한국어로 변환
+    for eng, kor in STATUS_LABELS.items():
+        md_text = md_text.replace(f"| {eng} |", f"| {kor} |")
+        md_text = md_text.replace(f": {eng}", f": {kor}")
+        md_text = md_text.replace(f"상태: {eng}", f"상태: {kor}")
 
     html_body = markdown.markdown(
         md_text,
