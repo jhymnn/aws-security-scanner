@@ -1,5 +1,6 @@
 import os
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 # 전체 포트 개방 검사
 from scanner.sg_checks import check_security_group_all_open
@@ -41,46 +42,40 @@ from scoring.security_score import calculate_score
 
 
 def run_all_checks():
+    # 서비스별 점검은 서로 독립적이므로 제한된 동시성으로 실행한다.
+    # 한 서비스 안의 호출 순서와 최종 결과 순서는 기존 동작을 유지한다.
+    check_groups = [
+        (
+            check_security_group_all_open,
+            check_security_group_ssh_open,
+            check_security_group_rdp_open,
+        ),
+        (
+            check_iam_admin_users,
+            check_iam_access_key_unused,
+            check_root_account_mfa,
+            check_iam_users_mfa,
+            check_iam_password_policy,
+        ),
+        (check_cloudtrail_enabled,),
+        (
+            check_s3_public_access,
+            check_s3_bucket_encryption,
+            check_s3_bucket_versioning,
+        ),
+        (check_rds_public_access,),
+    ]
 
-    results = []
+    def run_group(checks):
+        group_results = []
+        for check in checks:
+            group_results.extend(check())
+        return group_results
 
-    # ======================
-    # Security Group 검사
-    # ======================
+    with ThreadPoolExecutor(max_workers=len(check_groups)) as executor:
+        grouped_results = list(executor.map(run_group, check_groups))
 
-    results.extend(check_security_group_all_open())
-    results.extend(check_security_group_ssh_open())
-    results.extend(check_security_group_rdp_open())
-
-    # ======================
-    # IAM 검사
-    # ======================
-
-    results.extend(check_iam_admin_users())
-    results.extend(check_iam_access_key_unused())
-    results.extend(check_root_account_mfa())
-    results.extend(check_iam_users_mfa())
-    results.extend(check_iam_password_policy())
-
-    # ======================
-    # CloudTrail 검사
-    # ======================
-
-    results.extend(check_cloudtrail_enabled())
-
-    # ======================
-    # S3 검사
-    # ======================
-
-    results.extend(check_s3_public_access())
-    results.extend(check_s3_bucket_encryption())
-    results.extend(check_s3_bucket_versioning())
-
-    # ======================
-    # RDS 검사
-    # ======================
-
-    results.extend(check_rds_public_access())
+    results = [item for group in grouped_results for item in group]
 
     # ======================
     # Summary 계산
