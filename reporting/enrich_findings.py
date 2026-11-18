@@ -124,9 +124,15 @@ def enrich_findings(scan_result, kb):
     enriched = []
 
     results = scan_result.get("results", [])
+
+    fail_results = [
+        result for result in results
+        if normalize_status(result.get("status")) == "FAIL"
+    ]
+    
     print(f"전체 점검 결과 수: {len(results)}")
 
-    for result in results:
+    for result in fail_results:
         status = normalize_status(result.get("status"))
         
         sk_guide_id = map_to_sk_guide_id(result)
@@ -172,7 +178,7 @@ def main():
         json.dump(enriched, f, ensure_ascii=False, indent=2)
 
     print(f"컨텍스트 매칭 완료: {OUTPUT_ENRICHED}")
-    print(f"취약 항목 수: {len(enriched)}")
+    
 
     not_found = [x for x in enriched if x["context_status"] == "NOT_FOUND"]
 

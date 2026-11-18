@@ -290,7 +290,7 @@ def index():
                 <label>Region</label>
                 <input type="text" name="region" value="ap-northeast-2" required>
 
-                <button type="submit">보안 점검 실행 및 리포트 생성</button>
+                <button type="submit">보안 점검 실행</button>
             </form>
 
             <div class="notice">
@@ -518,7 +518,7 @@ def scan():
                         <p>{{ fail_count }}개</p>
                     </div>
                     <div class="card">
-                        <h3>INFO</h3>
+                        <h3>점검 대상 없음</h3>
                         <p>{{ info_count }}개</p>
                     </div>
                 </div>
@@ -562,7 +562,7 @@ def scan():
             </table>
 
             <div class="report-box">
-                <h2>자연어 기반 리포트 미리보기</h2>
+                <h2>리포트 미리보기</h2>
                 {% if report_md %}
                     <pre>{{ report_md }}</pre>
                 {% else %}
