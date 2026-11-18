@@ -1,0 +1,9 @@
+Flask
+boto3
+python-dotenv
+google-genai
+PyYAML
+requests
+PyMuPDF
+Markdown
+playwright
