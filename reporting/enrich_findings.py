@@ -28,6 +28,9 @@ def map_to_sk_guide_id(result):
     item = result.get("item", "")
 
     item_mapping = {
+        # 현재 scanner에서 실제로 출력하는 항목만 매핑한다.
+        # 가이드의 취지와 일치하지 않는 항목은 임의로 가까운 번호에 연결하지 않는다.
+
         # 계정 관리
         "IAM Admin User": "1.7",
         "IAM Access Key Unused": "1.8",
@@ -39,53 +42,22 @@ def map_to_sk_guide_id(result):
         "Security Group ALL Open": "3.1",
         "Security Group SSH Open": "3.1",
         "Security Group RDP Open": "3.1",
-        "Security Group Unused Rule": "3.2",
-        "Network ACL Open": "3.3",
-        "Route Table Public Route": "3.4",
-        "Internet Gateway Attached": "3.5",
-        "NAT Gateway Attached": "3.6",
 
         # S3
         "S3 Public Access Block": "3.7",
         "S3 Bucket Encryption": "4.3",
-        "S3 Bucket Versioning": "4.13",
-        "S3 Bucket Logging": "4.10",
 
         # RDS
         "RDS Public Access": "3.8",
         "RDS Encryption": "4.2",
-        "RDS Logging": "4.9",
+        "RDS Backup": "4.13",
+        "RDS Multi-AZ": "3.8",
 
-        # EBS / EC2
-        "EBS Encryption": "4.1",
-        "EC2 Instance Logging": "4.8",
-        "Key Pair Access": "1.5",
-        "Key Pair Storage": "1.6",
-
-        # CloudTrail / CloudWatch / VPC Flow Logs
+        # CloudTrail
         "CloudTrail Enabled": "4.7",
-        "CloudTrail Encryption": "4.5",
-        "CloudWatch Encryption": "4.6",
-        "VPC Flow Logs Enabled": "4.11",
-        "Log Retention Period": "4.12",
-
-        # EKS
-        "EKS User Management": "1.11",
-        "EKS Service Account": "1.12",
-        "EKS Anonymous Access": "1.13",
-        "EKS Pod Security": "3.9",
-        "EKS Control Plane Logging": "4.14",
-        "EKS Cluster Encryption": "4.15",
-
-        # ELB / 통신구간
-        "ELB Connection": "3.10",
-        "TLS Encryption": "4.4",
-        "Communication Encryption": "4.4",
-
-        # 권한 관리
-        "Instance Service Policy": "2.1",
-        "Network Service Policy": "2.2",
-        "Other Service Policy": "2.3",
+        "CloudTrail Logging": "4.7",
+        "CloudTrail Multi-Region": "4.7",
+        "CloudTrail Log Encryption": "4.5",
     }
 
     return item_mapping.get(item)
@@ -149,6 +121,7 @@ def enrich_findings(scan_result, kb):
             "status": status,
             "kisa_code": result.get("kisa_code"),
             "sk_guide_id": sk_guide_id,
+            "mapping_status": "MAPPED" if sk_guide_id else "UNMAPPED",
             "detail": result.get("detail")
         }
 

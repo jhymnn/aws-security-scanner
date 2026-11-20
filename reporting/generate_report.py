@@ -2,10 +2,12 @@ import time
 import os
 import json
 import random
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 STATUS_LABELS = {
     "PASS": "양호",
@@ -27,17 +29,21 @@ RISK_LABELS = {
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 INPUT_ENRICHED = "outputs/enriched_findings.json"
 INPUT_SCAN_RESULT = "outputs/scan_result.json"
 OUTPUT_MD = "outputs/security_report.md"
+OUTPUT_GEMINI_ERROR = "outputs/gemini_error.txt"
 
 # API 키가 있을 때만 Gemini 클라이언트 생성
 client = None
 
 if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(
+        api_key=GEMINI_API_KEY,
+        http_options=types.HttpOptions(timeout=30_000)
+    )
 
 
 def call_gemini(prompt):
@@ -62,6 +68,18 @@ def call_gemini(prompt):
     except Exception as e:
         print(f"Gemini 요청 실패: {e}")
         raise
+
+
+def safe_error_message(error):
+    """Save useful API diagnostics without writing an API key to reports."""
+    message = str(error)
+    message = re.sub(r"AIza[0-9A-Za-z_-]{20,}", "[API KEY REDACTED]", message)
+    message = re.sub(
+        r"(?i)(x-goog-api-key\s*[:=]\s*)[^\s,]+",
+        r"\1[REDACTED]",
+        message,
+    )
+    return f"{type(error).__name__}: {message}"
 
 
 def build_full_report_prompt(scan_result, enriched_findings):
@@ -194,7 +212,7 @@ def build_fallback_report(scan_result, enriched_findings):
     report.append(f"- 취약 항목: {len(fail_results)}개")
     report.append(f"- 대상 없음: {len(info_results)}개")
     report.append(f"- 점검 오류: {len(error_results)}개")
-    report.append(f"- 보안 점수: {security_score}점\n")
+    
 
     report.append(
         "> Gemini API 요청 실패로 Python 기본 보고서를 생성했습니다.\n"
@@ -236,7 +254,9 @@ def build_fallback_report(scan_result, enriched_findings):
 
         enriched = context_map.get(key, {})
 
+        finding = enriched.get("finding", {})
         guide = enriched.get("guide_context", {})
+        guide_id = finding.get("sk_guide_id")
 
         source = guide.get("source", {})
 
@@ -250,9 +270,12 @@ def build_fallback_report(scan_result, enriched_findings):
             f"- 위험도: {RISK_LABELS.get(risk, risk)}"
         )
         report.append(f"- KISA 코드: {kisa_code}")
-        report.append(
-            f"- SK쉴더스 가이드: {item.get('sk_guide_id', '정보 없음')}"
-        )
+        if guide_id and enriched.get("context_status") == "FOUND":
+            report.append(f"- SK쉴더스 가이드: {guide_id}")
+        elif guide_id:
+            report.append(f"- SK쉴더스 가이드: {guide_id} (YAML 항목 확인 필요)")
+        else:
+            report.append("- SK쉴더스 가이드: 직접 매핑된 항목 없음")
 
         report.append("\n#### 원인 분석\n")
 
@@ -419,17 +442,26 @@ def main():
         report = call_gemini(prompt)
 
         print("보고서 생성 성공")
+        Path(OUTPUT_GEMINI_ERROR).unlink(missing_ok=True)
 
     except Exception as e:
 
+        error_message = safe_error_message(e)
         print("Gemini 보고서 생성 실패")
-        print(f"오류 내용: {e}")
+        print(f"오류 내용: {error_message}")
+
+        Path(OUTPUT_GEMINI_ERROR).write_text(error_message, encoding="utf-8")
 
         print("Python 기본 보고서로 전환합니다.")
 
         report = build_fallback_report(
             scan_result,
             enriched_findings
+        )
+        report = report.replace(
+            "> Gemini API 요청 실패로 Python 기본 보고서를 생성했습니다.",
+            "> Gemini API 요청 실패로 Python 기본 보고서를 생성했습니다. "
+            f"오류: `{error_message}`",
         )
 
     with open(OUTPUT_MD, "w", encoding="utf-8") as f:

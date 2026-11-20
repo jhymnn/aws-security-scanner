@@ -1,10 +1,10 @@
-import boto3
+from scanner.aws_client import create_client
 from botocore.exceptions import ClientError
 
 
 def check_rds_public_access():
 
-    rds = boto3.client(
+    rds = create_client(
         "rds",
         region_name="ap-northeast-2"
     )

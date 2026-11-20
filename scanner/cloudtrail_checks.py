@@ -1,10 +1,10 @@
-import boto3
+from scanner.aws_client import create_client
 from botocore.exceptions import ClientError
 
 
 def check_cloudtrail_enabled():
 
-    cloudtrail = boto3.client(
+    cloudtrail = create_client(
         "cloudtrail",
         region_name="ap-northeast-2"
     )

@@ -1,9 +1,9 @@
-import boto3
+from scanner.aws_client import create_client
 from botocore.exceptions import ClientError
 
 
 def check_s3_public_access():
-    s3 = boto3.client("s3")
+    s3 = create_client("s3")
     results = []
 
     print("\n=== S3 Public Access 점검 결과 ===")
@@ -65,7 +65,7 @@ def check_s3_public_access():
 
 
 def check_s3_bucket_encryption():
-    s3 = boto3.client("s3")
+    s3 = create_client("s3")
     results = []
 
     print("\n=== S3 버킷 암호화 점검 결과 ===")
@@ -115,7 +115,7 @@ def check_s3_bucket_encryption():
 
 
 def check_s3_bucket_versioning():
-    s3 = boto3.client("s3")
+    s3 = create_client("s3")
     results = []
 
     print("\n=== S3 버킷 버전 관리 점검 결과 ===")

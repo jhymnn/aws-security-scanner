@@ -1,10 +1,10 @@
-import boto3
+from scanner.aws_client import create_client
 from botocore.exceptions import ClientError
 
 
 def check_security_group_ssh_open():
 
-    ec2 = boto3.client(
+    ec2 = create_client(
         "ec2",
         region_name="ap-northeast-2"
     )
@@ -117,7 +117,7 @@ def check_security_group_ssh_open():
 
 def check_security_group_rdp_open():
 
-    ec2 = boto3.client(
+    ec2 = create_client(
         "ec2",
         region_name="ap-northeast-2"
     )
@@ -205,7 +205,7 @@ def check_security_group_rdp_open():
 
 def check_security_group_all_open():
 
-    ec2 = boto3.client(
+    ec2 = create_client(
         "ec2",
         region_name="ap-northeast-2"
     )
