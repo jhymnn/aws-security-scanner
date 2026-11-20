@@ -1,28 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>검사 결과</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AWS 보안 진단 대시보드</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            margin: 0;
+            padding: 35px 20px;
+            background-color: #f5f7fb;
+            color: #263238;
+        }
+
+        .container {
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #243447;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #687782;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #263746;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin: 18px 0 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #ccd4dc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3478c8;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 15px;
+            border: none;
+            border-radius: 7px;
+            background: #2869b2;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d548f;
+        }
+
+        button:disabled {
+            background: #8baed3;
+            cursor: wait;
+        }
+
+        .error-box {
+            background: #fff0f0;
+            border: 1px solid #e6aaaa;
+            color: #b42318;
+            padding: 15px;
+            border-radius: 7px;
+            margin-bottom: 20px;
+        }
+
+        .notice {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f2f6fb;
+            border-left: 4px solid #3478c8;
+            border-radius: 5px;
+            color: #687782;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 650px) {
+            body {
+                padding: 20px 12px;
+            }
+
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>AWS 검사 결과</h1>
+<div class="container">
 
-<p>전체: {{ summary.total_checks }}</p>
-<p>PASS: {{ summary.pass_count }}</p>
-<p>FAIL: {{ summary.fail_count }}</p>
-<p>Score: {{ summary.security_score }}</p>
+    <h1>🛡️ AWS 보안 진단 대시보드</h1>
 
-<hr>
+    <p class="description">
+        AWS 인증정보를 입력하고 클라우드 인프라의 보안 상태를 진단합니다.
+    </p>
 
-{% for r in results %}
-    <div style="border:1px solid black; margin:10px; padding:10px;">
-        <h3>{{ r.item_name }}</h3>
-        상태: {{ r.status }}
+    <!-- 오류 메시지 -->
+    {% if error %}
+        <div class="error-box">
+            <strong>오류가 발생했습니다.</strong>
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    <!-- AWS 인증정보 입력 -->
+    <div class="section">
+
+        <h2>AWS 인증정보 입력</h2>
+
+        <p>
+            보안 검사를 진행하려면 AWS 인증정보를 입력해주세요.
+        </p>
+
+        <form action="/scan" method="POST" id="scanForm">
+
+            <label for="access_key">
+                AWS Access Key
+            </label>
+
+            <input
+                type="text"
+                id="access_key"
+                name="access_key"
+                placeholder="AWS Access Key를 입력하세요"
+                autocomplete="off"
+                required
+            >
+
+            <label for="secret_key">
+                AWS Secret Key
+            </label>
+
+            <input
+                type="password"
+                id="secret_key"
+                name="secret_key"
+                placeholder="AWS Secret Key를 입력하세요"
+                autocomplete="off"
+                required
+            >
+
+            <label for="region">
+                AWS Region
+            </label>
+
+            <input
+                type="text"
+                id="region"
+                name="region"
+                value="{{ region or 'ap-northeast-2' }}"
+                required
+            >
+
+            <button type="submit" id="scanButton">
+                AWS 보안 검사 시작
+            </button>
+
+        </form>
+
+        <div class="notice">
+            <strong>검사 안내</strong><br>
+            입력한 AWS 인증정보를 이용하여 계정의 보안 설정과
+            리소스 상태를 검사합니다. 검사가 완료되면 별도의 결과 화면으로 이동합니다.
+        </div>
+
     </div>
-{% endfor %}
 
-<br>
-<a href="/logout">로그아웃</a>
+</div>
+
+<script>
+    const scanForm = document.getElementById("scanForm");
+    const scanButton = document.getElementById("scanButton");
+
+    scanForm.addEventListener("submit", function () {
+        scanButton.disabled = true;
+        scanButton.textContent = "보안 검사 진행 중...";
+    });
+</script>
 
 </body>
 </html>

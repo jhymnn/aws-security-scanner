@@ -7,8 +7,16 @@ PDF_PATH = "data/guide.pdf"
 OUTPUT_DIR = "outputs/extracted_guide_sections"
 
 
-SECTION_HEADING_PATTERN = re.compile(r"^\s*(\d+\.\d+)\s+(.+?)\s*$")
-TOC_LEADER_PATTERN = re.compile(r"(?:\.{3,}|…{2,}|·{5,})")
+TARGET_SECTIONS = {
+    "1.7": "Admin Console 관리자 정책 관리",
+    "1.9": "MFA",
+    "1.10": "AWS 계정 패스워드 정책 관리",
+    "3.1": "보안 그룹 인/아웃바운드 ANY 설정 관리",
+    "3.7": "S3 버킷/객체 접근 관리",
+    "4.3": "S3 암호화 설정",
+    "4.7": "AWS 사용자 계정 로깅 설정",
+    "4.10": "S3 버킷 로깅 설정",
+}
 
 
 def extract_pages_text():
@@ -37,41 +45,22 @@ def make_full_text_with_page_markers(pages):
 
 
 def find_section_positions(full_text):
-    """Discover numbered section headings from the PDF text itself.
+    positions = []
 
-    The PDF table of contents uses dotted leaders, so ignore those lines and
-    use the numbered headings in the body. This keeps the section list from
-    going stale when the guide gains or changes sections.
-    """
-    positions_by_id = {}
-    offset = 0
-
-    for line in full_text.splitlines(keepends=True):
-        stripped_line = line.strip()
-        match = SECTION_HEADING_PATTERN.match(stripped_line)
+    for section_id, title_keyword in TARGET_SECTIONS.items():
+        pattern = rf"\n{re.escape(section_id)}\s+.*{re.escape(title_keyword)}"
+        match = re.search(pattern, full_text)
 
         if match:
-            section_id, title = match.groups()
-            title = title.strip()
+            positions.append({
+                "section_id": section_id,
+                "title_keyword": title_keyword,
+                "start": match.start()
+            })
+        else:
+            print(f"[경고] 항목을 찾지 못함: {section_id} {title_keyword}")
 
-            if title and not TOC_LEADER_PATTERN.search(title):
-                if section_id not in positions_by_id:
-                    positions_by_id[section_id] = {
-                        "section_id": section_id,
-                        "title_keyword": title,
-                        "start": offset + line.index(stripped_line),
-                    }
-
-        offset += len(line)
-
-    positions = sorted(positions_by_id.values(), key=lambda item: item["start"])
-
-    if not positions:
-        raise ValueError(
-            "PDF 본문에서 번호가 있는 섹션 제목을 찾지 못했습니다. "
-            "PDF의 텍스트 레이어와 제목 형식을 확인하세요."
-        )
-
+    positions.sort(key=lambda x: x["start"])
     return positions
 
 
@@ -126,7 +115,7 @@ def main():
     sections = split_sections(full_text, positions)
     save_sections(sections)
 
-    print(f"전체 {len(sections)}개 섹션 추출 완료")
+    print("항목별 추출 완료")
 
 
 if __name__ == "__main__":

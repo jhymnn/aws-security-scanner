@@ -1,9 +1,9 @@
-from scanner.aws_client import create_client
+import boto3
 from datetime import datetime, timezone
 
 
 def check_iam_users_mfa():
-    iam = create_client("iam")
+    iam = boto3.client("iam")
     results = []
 
     users = iam.list_users()["Users"]
@@ -39,7 +39,7 @@ def check_iam_users_mfa():
 
 
 def check_root_account_mfa():
-    iam = create_client("iam")
+    iam = boto3.client("iam")
     results = []
 
     print("\n=== 루트 계정 MFA 점검 결과 ===")
@@ -73,7 +73,7 @@ def check_root_account_mfa():
 
 
 def check_iam_password_policy():
-    iam = create_client("iam")
+    iam = boto3.client("iam")
     results = []
 
     print("\n=== IAM 비밀번호 정책 점검 결과 ===")
@@ -136,7 +136,7 @@ def check_iam_password_policy():
 
 def check_iam_access_key_unused(days_threshold=90):
 
-    iam = create_client("iam")
+    iam = boto3.client("iam")
     results = []
 
     print("\n=== IAM Access Key 미사용 점검 결과 ===")
@@ -210,7 +210,7 @@ def check_iam_access_key_unused(days_threshold=90):
 
 def check_iam_admin_users():
 
-    iam = create_client("iam")
+    iam = boto3.client("iam")
     results = []
 
     print("\n=== IAM 관리자 권한 사용자 점검 결과 ===")
